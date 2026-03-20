@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "codebase-readiness": {
+      "source": "dgalarza/claude-code-workflows",
+      "sourceType": "github",
+      "computedHash": "de39a7f8860c5cd48e2ed053151e21d24fffb16cfc4e74d9a9542abf5ca9e5ed"
+    }
+  }
+}
