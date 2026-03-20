@@ -82,6 +82,7 @@ class BootstrapManager(private val context: Context) {
         stagingDir.renameTo(prefixDir)
         setupDirectories()
         copyAssetScripts()
+        writeDepsUrls()
         syncWwwFromAssets()
         setupTermuxExec()
 
@@ -361,6 +362,29 @@ exit ${d}_rc
         }
     }
 
+    /**
+     * Write deps-urls.env with resolved dependency URLs for post-setup.sh.
+     * Uses BuildConfig fallbacks (config.json resolution happens at download time in post-setup).
+     */
+    private fun writeDepsUrls() {
+        val ocaDir = File(homeDir, ".openclaw-android")
+        ocaDir.mkdirs()
+        val envFile = File(ocaDir, "deps-urls.env")
+        val urls = mapOf(
+            "OCA_NODE_URL" to BuildConfig.DEPS_NODE_URL,
+            "OCA_GLIBC_URL" to BuildConfig.DEPS_GLIBC_URL,
+            "OCA_GCC_LIBS_URL" to BuildConfig.DEPS_GCC_LIBS_URL,
+            "OCA_LIBEXPAT_URL" to BuildConfig.DEPS_LIBEXPAT_URL,
+            "OCA_PCRE2_URL" to BuildConfig.DEPS_PCRE2_URL,
+            "OCA_GIT_URL" to BuildConfig.DEPS_GIT_URL
+        )
+        val content = urls.entries.joinToString("\n") { (k, v) ->
+            "$k=\"$v\""
+        }
+        envFile.writeText(content + "\n")
+        Log.i(TAG, "deps-urls.env written to ${envFile.absolutePath}")
+    }
+
     // Runtime packages are installed by post-setup.sh in the terminal
 
     /**
@@ -371,6 +395,7 @@ exit ${d}_rc
     fun applyScriptUpdate() {
         if (!isInstalled()) return
         copyAssetScripts()
+        writeDepsUrls()
         syncWwwFromAssets()
         installOaCli()
         Log.i(TAG, "Script update applied")

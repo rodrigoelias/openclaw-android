@@ -26,18 +26,45 @@ android {
 
         ndk { abiFilters += listOf("arm64-v8a") }
 
-        // Initial download URLs (§2.9) — BuildConfig hardcoded fallbacks
+        // Download URLs (§2.9) — BuildConfig hardcoded fallbacks
+        // Override via config.json hosted at CONFIG_URL (see UrlResolver)
         buildConfigField(
             "String", "BOOTSTRAP_URL",
-            "\"https://github.com/termux/termux-packages/releases/download/bootstrap-2026.02.12-r1%2Bapt.android-7/bootstrap-aarch64.zip\""
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/bootstrap-aarch64.zip\""
         )
         buildConfigField(
             "String", "WWW_URL",
-            "\"https://github.com/AidanPark/openclaw-android-app/releases/download/v1.0.0/www.zip\""
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/www.zip\""
         )
         buildConfigField(
             "String", "CONFIG_URL",
-            "\"https://raw.githubusercontent.com/AidanPark/openclaw-android-app/main/config.json\""
+            "\"https://raw.githubusercontent.com/rodrigoelias/openclaw-android/main/config.json\""
+        )
+
+        // Dependency URLs — used by post-setup.sh via deps-urls.env
+        buildConfigField(
+            "String", "DEPS_NODE_URL",
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/node-v22.22.0-linux-arm64.tar.xz\""
+        )
+        buildConfigField(
+            "String", "DEPS_GLIBC_URL",
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/glibc-2.42-0-aarch64.pkg.tar.xz\""
+        )
+        buildConfigField(
+            "String", "DEPS_GCC_LIBS_URL",
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/gcc-libs-glibc-14.2.1-1-aarch64.pkg.tar.xz\""
+        )
+        buildConfigField(
+            "String", "DEPS_LIBEXPAT_URL",
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/libexpat_2.7.1-1_aarch64.deb\""
+        )
+        buildConfigField(
+            "String", "DEPS_PCRE2_URL",
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/pcre2_10.45-1_aarch64.deb\""
+        )
+        buildConfigField(
+            "String", "DEPS_GIT_URL",
+            "\"https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/git_2.49.0_aarch64.deb\""
         )
     }
 

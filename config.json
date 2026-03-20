@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "bootstrap": {
+    "url": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/bootstrap-aarch64.zip"
+  },
+  "www": {
+    "url": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/www.zip"
+  },
+  "deps": {
+    "node": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/node-v22.22.0-linux-arm64.tar.xz",
+    "glibc": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/glibc-2.42-0-aarch64.pkg.tar.xz",
+    "gcc_libs": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/gcc-libs-glibc-14.2.1-1-aarch64.pkg.tar.xz",
+    "libexpat": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/libexpat_2.7.1-1_aarch64.deb",
+    "pcre2": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/pcre2_10.45-1_aarch64.deb",
+    "git": "https://github.com/rodrigoelias/openclaw-android/releases/download/deps-v1/git_2.49.0_aarch64.deb"
+  }
+}

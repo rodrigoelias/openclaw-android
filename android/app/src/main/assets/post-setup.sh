@@ -30,6 +30,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# ─── Dependency URLs ─────────────────────────
+# Source URLs from deps-urls.env (written by the Android app).
+# Each OCA_*_URL variable points to a GitHub release asset.
+DEPS_ENV="$OCA_DIR/deps-urls.env"
+if [ -f "$DEPS_ENV" ]; then
+    source "$DEPS_ENV"
+fi
+
 # SSL cert for curl (bootstrap curl looks at hardcoded com.termux path)
 export CURL_CA_BUNDLE="$PREFIX/etc/tls/cert.pem"
 export SSL_CERT_FILE="$PREFIX/etc/tls/cert.pem"
@@ -64,14 +72,12 @@ DEB_DIR="$TMPDIR/debs"
 PKG_DIR="$TMPDIR/pkgs"
 EXTRACT_DIR="$TMPDIR/pkg-extract"
 
-# ─── Helper: install_deb ──────────────────────
-# Downloads a .deb from Termux repo and extracts into $PREFIX
-install_deb() {
-    local filename="$1"
-    local name
-    name=$(basename "$filename" | sed 's/_[0-9].*//')
-    local url="${TERMUX_DEB_REPO}/${filename}"
-    local deb_file="${DEB_DIR}/$(basename "$filename")"
+# ─── Helper: install_deb_from_url ─────────────
+# Downloads a .deb from a direct URL and extracts into $PREFIX
+install_deb_from_url() {
+    local url="$1"
+    local name="$2"
+    local deb_file="${DEB_DIR}/$(basename "$url")"
 
     if [ -f "$deb_file" ]; then
         echo "    (cached) $name"
@@ -91,15 +97,20 @@ install_deb() {
     rm -rf "$EXTRACT_DIR"
 }
 
-# ─── Helper: install_pacman_pkg ───────────────
-# Downloads a .pkg.tar.xz from pacman repo and extracts into target dir
-install_pacman_pkg() {
+# ─── Helper: install_deb (legacy, from Termux repo) ──────────────────────
+# Downloads a .deb from Termux repo and extracts into $PREFIX
+install_deb() {
     local filename="$1"
-    local target="$2"  # e.g., $PREFIX/glibc
-    local name
-    name=$(echo "$filename" | sed 's/-[0-9].*//')
-    local url="${PACMAN_PKG_REPO}/${filename}"
-    local pkg_file="${PKG_DIR}/${filename}"
+    install_deb_from_url "${TERMUX_DEB_REPO}/${filename}" "$(basename "$filename" | sed 's/_[0-9].*//')"
+}
+
+# ─── Helper: install_pacman_pkg_from_url ──────
+# Downloads a .pkg.tar.xz from a direct URL and extracts into target dir
+install_pacman_pkg_from_url() {
+    local url="$1"
+    local target="$2"
+    local name="$3"
+    local pkg_file="${PKG_DIR}/$(basename "$url")"
 
     if [ -f "$pkg_file" ]; then
         echo "    (cached) $name"
@@ -123,45 +134,55 @@ install_pacman_pkg() {
     rm -rf "$EXTRACT_DIR"
 }
 
+# ─── Helper: install_pacman_pkg (legacy, from pacman repo) ───────────
+install_pacman_pkg() {
+    local filename="$1"
+    local target="$2"
+    install_pacman_pkg_from_url "${PACMAN_PKG_REPO}/${filename}" "$target" "$(echo "$filename" | sed 's/-[0-9].*//')"
+}
+
 # ─── [1/7] Install essential packages ─────────
 echo -e "▸ ${YELLOW}[1/7]${NC} Installing essential packages..."
 mkdir -p "$DEB_DIR" "$PKG_DIR"
 
-# Download Packages index to resolve .deb filenames
-echo "  Fetching package index..."
-PACKAGES_FILE="$TMPDIR/Packages"
-curl -fsSL --max-time 60 \
-    "${TERMUX_DEB_REPO}/dists/stable/main/binary-aarch64/Packages" \
-    -o "$PACKAGES_FILE"
+if [ -n "${OCA_LIBEXPAT_URL:-}" ] && [ -n "${OCA_PCRE2_URL:-}" ] && [ -n "${OCA_GIT_URL:-}" ]; then
+    # Direct URL mode: download each .deb from GitHub release
+    echo "  [1/3] libexpat"
+    install_deb_from_url "$OCA_LIBEXPAT_URL" "libexpat"
+    echo "  [2/3] pcre2"
+    install_deb_from_url "$OCA_PCRE2_URL" "pcre2"
+    echo "  [3/3] git"
+    install_deb_from_url "$OCA_GIT_URL" "git"
+else
+    # Legacy mode: resolve from Termux package index
+    echo "  Fetching package index..."
+    PACKAGES_FILE="$TMPDIR/Packages"
+    curl -fsSL --max-time 60 \
+        "${TERMUX_DEB_REPO}/dists/stable/main/binary-aarch64/Packages" \
+        -o "$PACKAGES_FILE"
 
-# Resolve package filename from Packages index
-get_deb_filename() {
-    local pkg="$1"
-    awk -v pkg="$pkg" '
-        /^Package: / { found = ($2 == pkg) }
-        found && /^Filename:/ { print $2; exit }
-    ' "$PACKAGES_FILE"
-}
+    get_deb_filename() {
+        local pkg="$1"
+        awk -v pkg="$pkg" '
+            /^Package: / { found = ($2 == pkg) }
+            found && /^Filename:/ { print $2; exit }
+        ' "$PACKAGES_FILE"
+    }
 
-# Packages to install via dpkg-deb (dependency order, only those missing from bootstrap)
-DEB_PACKAGES=(
-    libexpat          # git dep
-    pcre2             # git dep
-    git               # for npm/openclaw
-)
-
-TOTAL=${#DEB_PACKAGES[@]}
-COUNT=0
-for pkg in "${DEB_PACKAGES[@]}"; do
-    COUNT=$((COUNT + 1))
-    filename=$(get_deb_filename "$pkg")
-    if [ -z "$filename" ]; then
-        echo -e "  ${RED}✗${NC} Package '$pkg' not found in index"
-        continue
-    fi
-    echo "  [$COUNT/$TOTAL] $pkg"
-    install_deb "$filename"
-done
+    DEB_PACKAGES=(libexpat pcre2 git)
+    TOTAL=${#DEB_PACKAGES[@]}
+    COUNT=0
+    for pkg in "${DEB_PACKAGES[@]}"; do
+        COUNT=$((COUNT + 1))
+        filename=$(get_deb_filename "$pkg")
+        if [ -z "$filename" ]; then
+            echo -e "  ${RED}✗${NC} Package '$pkg' not found in index"
+            continue
+        fi
+        echo "  [$COUNT/$TOTAL] $pkg"
+        install_deb "$filename"
+    done
+fi
 
 # Make sure newly extracted binaries are executable
 chmod +x "$PREFIX/bin/"* 2>/dev/null || true
@@ -182,14 +203,21 @@ if [ -x "$GLIBC_LDSO" ]; then
 else
     mkdir -p "$PREFIX/glibc"
 
-    # Download glibc package directly from pacman repo (no pacman needed)
-    # The gpkg.db tells us: glibc-2.42-0-aarch64.pkg.tar.xz (~9.7MB)
+    # Download glibc package (~9.7MB)
     echo "  Downloading glibc (~10MB)..."
-    install_pacman_pkg "glibc-2.42-0-aarch64.pkg.tar.xz" "$PREFIX/glibc"
+    if [ -n "${OCA_GLIBC_URL:-}" ]; then
+        install_pacman_pkg_from_url "$OCA_GLIBC_URL" "$PREFIX/glibc" "glibc"
+    else
+        install_pacman_pkg "glibc-2.42-0-aarch64.pkg.tar.xz" "$PREFIX/glibc"
+    fi
 
     # gcc-libs-glibc provides libstdc++.so.6 needed by Node.js (~24MB)
     echo "  Downloading gcc-libs (~24MB)..."
-    install_pacman_pkg "gcc-libs-glibc-14.2.1-1-aarch64.pkg.tar.xz" "$PREFIX/glibc"
+    if [ -n "${OCA_GCC_LIBS_URL:-}" ]; then
+        install_pacman_pkg_from_url "$OCA_GCC_LIBS_URL" "$PREFIX/glibc" "gcc-libs"
+    else
+        install_pacman_pkg "gcc-libs-glibc-14.2.1-1-aarch64.pkg.tar.xz" "$PREFIX/glibc"
+    fi
 
     # Verify linker
     if [ ! -f "$GLIBC_LDSO" ]; then
@@ -233,9 +261,10 @@ NPXWRAP
     fi
 else
     NODE_TAR="node-v${NODE_VERSION}-linux-arm64"
+    NODE_URL="${OCA_NODE_URL:-https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TAR}.tar.xz}"
     echo "  Downloading Node.js v${NODE_VERSION} (~25MB)..."
     curl -fSL --max-time 300 \
-        "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TAR}.tar.xz" \
+        "$NODE_URL" \
         -o "$TMPDIR/${NODE_TAR}.tar.xz"
 
     echo "  Extracting..."
@@ -490,8 +519,25 @@ if [ -f "$TOOL_CONF" ]; then
     if $HAS_TOOLS; then
         echo -e "▸ ${YELLOW}[7/7]${NC} Installing optional tools..."
 
-        # Helper: install .deb with direct dependencies
+        # Helper: install .deb with direct dependencies (requires Termux Packages index)
+        _ensure_packages_index() {
+            PACKAGES_FILE="${PACKAGES_FILE:-$TMPDIR/Packages}"
+            if [ ! -f "$PACKAGES_FILE" ]; then
+                echo "    Fetching package index for optional tools..."
+                curl -fsSL --max-time 60 \
+                    "${TERMUX_DEB_REPO}/dists/stable/main/binary-aarch64/Packages" \
+                    -o "$PACKAGES_FILE"
+            fi
+        }
+        _get_deb_filename() {
+            local pkg="$1"
+            awk -v pkg="$pkg" '
+                /^Package: / { found = ($2 == pkg) }
+                found && /^Filename:/ { print $2; exit }
+            ' "$PACKAGES_FILE"
+        }
         install_with_deps() {
+            _ensure_packages_index
             local pkg="$1"
             local deps
             deps=$(awk -v pkg="$pkg" '
@@ -507,11 +553,11 @@ if [ -f "$TOOL_CONF" ]; then
                 dep=$(echo "$dep" | tr -d ' ')
                 [ -z "$dep" ] && continue
                 local dep_file
-                dep_file=$(get_deb_filename "$dep")
+                dep_file=$(_get_deb_filename "$dep")
                 [ -n "$dep_file" ] && install_deb "$dep_file" 2>/dev/null || true
             done <<< "$deps"
             local filename
-            filename=$(get_deb_filename "$pkg")
+            filename=$(_get_deb_filename "$pkg")
             [ -n "$filename" ] && install_deb "$filename"
         }
 
@@ -561,7 +607,7 @@ else
 fi
 
 # ─── Cleanup ────────────────────────────────
-rm -rf "$DEB_DIR" "$PKG_DIR" "$PACKAGES_FILE" "$TMPDIR/gpkg.db" 2>/dev/null || true
+rm -rf "$DEB_DIR" "$PKG_DIR" "${PACKAGES_FILE:-}" "$TMPDIR/gpkg.db" 2>/dev/null || true
 
 # ─── Done ────────────────────────────────────
 touch "$MARKER"

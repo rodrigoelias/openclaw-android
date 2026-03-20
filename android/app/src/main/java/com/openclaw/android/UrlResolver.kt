@@ -29,6 +29,23 @@ class UrlResolver(private val context: Context) {
         return config?.www?.url ?: BuildConfig.WWW_URL
     }
 
+    /**
+     * Resolve all dependency URLs for post-setup.sh.
+     * Returns a map of env-var-name → URL.
+     */
+    suspend fun getDepsUrls(): Map<String, String> {
+        val config = loadConfig()
+        val deps = config?.deps
+        return mapOf(
+            "OCA_NODE_URL" to (deps?.node ?: BuildConfig.DEPS_NODE_URL),
+            "OCA_GLIBC_URL" to (deps?.glibc ?: BuildConfig.DEPS_GLIBC_URL),
+            "OCA_GCC_LIBS_URL" to (deps?.gccLibs ?: BuildConfig.DEPS_GCC_LIBS_URL),
+            "OCA_LIBEXPAT_URL" to (deps?.libexpat ?: BuildConfig.DEPS_LIBEXPAT_URL),
+            "OCA_PCRE2_URL" to (deps?.pcre2 ?: BuildConfig.DEPS_PCRE2_URL),
+            "OCA_GIT_URL" to (deps?.git ?: BuildConfig.DEPS_GIT_URL)
+        )
+    }
+
     private suspend fun loadConfig(): RemoteConfig? {
         // 1. Local cache
         if (configFile.exists()) {
@@ -58,6 +75,7 @@ class UrlResolver(private val context: Context) {
         val version: Int?,
         val bootstrap: ComponentConfig?,
         val www: ComponentConfig?,
+        val deps: DepsConfig?,
         val platforms: List<PlatformConfig>?,
         val features: Map<String, Boolean>?
     )
@@ -66,6 +84,15 @@ class UrlResolver(private val context: Context) {
         val url: String,
         val version: String?,
         @SerializedName("sha256") val sha256: String?
+    )
+
+    data class DepsConfig(
+        val node: String?,
+        val glibc: String?,
+        @SerializedName("gcc_libs") val gccLibs: String?,
+        val libexpat: String?,
+        val pcre2: String?,
+        val git: String?
     )
 
     data class PlatformConfig(
