@@ -2,87 +2,41 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/../scripts/lib.sh"
 
 PASS=0
 FAIL=0
 WARN=0
 
-check_pass() {
-    echo -e "${GREEN}[PASS]${NC} $1"
-    PASS=$((PASS + 1))
-}
+check_pass() { echo -e "${GREEN}[PASS]${NC} $1"; PASS=$((PASS + 1)); }
+check_fail() { echo -e "${RED}[FAIL]${NC} $1"; FAIL=$((FAIL + 1)); }
+check_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; WARN=$((WARN + 1)); }
 
-check_fail() {
-    echo -e "${RED}[FAIL]${NC} $1"
-    FAIL=$((FAIL + 1))
-}
-
-check_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-    WARN=$((WARN + 1))
-}
-
-echo "=== OpenClaw on Android - Installation Verification ==="
+echo "=== Hermes on Android - Installation Verification ==="
 echo ""
 
-if command -v node &>/dev/null; then
-    NODE_VER=$(node -v)
-    NODE_MAJOR="${NODE_VER%%.*}"
-    NODE_MAJOR="${NODE_MAJOR#v}"
-    if [ "$NODE_MAJOR" -ge 22 ] 2>/dev/null; then
-        check_pass "Node.js $NODE_VER (>= 22)"
+if command -v python &>/dev/null; then
+    PY_VER=$(python --version 2>/dev/null | awk '{print $2}')
+    if python -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+        check_pass "Python $PY_VER (>= 3.11)"
     else
-        check_fail "Node.js $NODE_VER (need >= 22)"
+        check_fail "Python $PY_VER (need >= 3.11)"
     fi
 else
-    check_fail "Node.js not found"
+    check_fail "Python not found"
 fi
 
-if command -v npm &>/dev/null; then
-    check_pass "npm $(npm -v)"
+if command -v pip &>/dev/null; then
+    check_pass "pip $(pip --version 2>/dev/null | awk '{print $2}')"
 else
-    check_fail "npm not found"
+    check_fail "pip not found"
 fi
 
 if [ -n "${TMPDIR:-}" ]; then
     check_pass "TMPDIR=$TMPDIR"
 else
-    check_fail "TMPDIR not set"
-fi
-
-if [ "${OA_GLIBC:-}" = "1" ]; then
-    check_pass "OA_GLIBC=1 (glibc architecture)"
-else
-    check_fail "OA_GLIBC not set"
-fi
-
-COMPAT_FILE="$PROJECT_DIR/patches/glibc-compat.js"
-if [ -f "$COMPAT_FILE" ]; then
-    check_pass "glibc-compat.js exists"
-else
-    check_fail "glibc-compat.js not found at $COMPAT_FILE"
-fi
-
-GLIBC_MARKER="$PROJECT_DIR/.glibc-arch"
-if [ -f "$GLIBC_MARKER" ]; then
-    check_pass "glibc architecture marker (.glibc-arch)"
-else
-    check_fail "glibc architecture marker not found"
-fi
-
-GLIBC_LDSO="${PREFIX:-}/glibc/lib/ld-linux-aarch64.so.1"
-if [ -f "$GLIBC_LDSO" ]; then
-    check_pass "glibc dynamic linker (ld-linux-aarch64.so.1)"
-else
-    check_fail "glibc dynamic linker not found at $GLIBC_LDSO"
-fi
-
-NODE_WRAPPER="$BIN_DIR/node"
-if [ -f "$NODE_WRAPPER" ] && head -1 "$NODE_WRAPPER" 2>/dev/null | grep -q "bash"; then
-    check_pass "glibc node wrapper script"
-else
-    check_fail "glibc node wrapper not found or not a wrapper script"
+    check_warn "TMPDIR not set"
 fi
 
 for DIR in "$PROJECT_DIR" "$PREFIX/tmp"; do
@@ -93,27 +47,16 @@ for DIR in "$PROJECT_DIR" "$PREFIX/tmp"; do
     fi
 done
 
-if command -v code-server &>/dev/null; then
-    CS_VER=$(code-server --version 2>/dev/null | head -1 || true)
-    if [ -n "$CS_VER" ]; then
-        check_pass "code-server $CS_VER"
-    else
-        check_warn "code-server found but --version failed"
-    fi
-else
-    check_warn "code-server not installed (non-critical)"
-fi
-
-if command -v opencode &>/dev/null; then
-    check_pass "opencode command available"
-else
-    check_warn "opencode not installed (non-critical)"
-fi
-
-if grep -qF "OpenClaw on Android" "$HOME/.bashrc" 2>/dev/null; then
+if grep -qF "Hermes on Android" "$HOME/.bashrc" 2>/dev/null; then
     check_pass ".bashrc contains environment block"
 else
     check_fail ".bashrc missing environment block"
+fi
+
+if [ -f "$PREFIX/bin/ha" ]; then
+    check_pass "ha CLI installed"
+else
+    check_fail "ha CLI not installed at $PREFIX/bin/ha"
 fi
 
 PLATFORM=$(detect_platform) || true

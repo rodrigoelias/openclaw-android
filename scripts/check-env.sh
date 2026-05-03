@@ -2,11 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib.sh"
 
 ERRORS=0
 
-echo "=== OpenClaw on Android - Environment Check ==="
+echo "=== Hermes on Android - Environment Check ==="
 echo ""
 
 if [ -z "${PREFIX:-}" ]; then
@@ -30,29 +31,29 @@ else
 fi
 
 AVAILABLE_MB=$(df "$PREFIX" 2>/dev/null | awk 'NR==2 {print int($4/1024)}')
-if [ -n "$AVAILABLE_MB" ] && [ "$AVAILABLE_MB" -lt 1000 ]; then
-    echo -e "${RED}[FAIL]${NC} Insufficient disk space: ${AVAILABLE_MB}MB available (need 1000MB+)"
+if [ -n "$AVAILABLE_MB" ] && [ "$AVAILABLE_MB" -lt 2000 ]; then
+    echo -e "${YELLOW}[WARN]${NC} Low disk space: ${AVAILABLE_MB}MB available (recommended 2000MB+)"
+elif [ -n "$AVAILABLE_MB" ] && [ "$AVAILABLE_MB" -lt 800 ]; then
+    echo -e "${RED}[FAIL]${NC} Insufficient disk space: ${AVAILABLE_MB}MB available (need 800MB+)"
     ERRORS=$((ERRORS + 1))
 else
     echo -e "${GREEN}[OK]${NC}   Disk space: ${AVAILABLE_MB:-unknown}MB available"
 fi
 
-if command -v node &>/dev/null; then
-    NODE_VER=$(node -v 2>/dev/null || echo "unknown")
-    echo -e "${GREEN}[OK]${NC}   Node.js found: $NODE_VER"
-    NODE_MAJOR="${NODE_VER%%.*}"
-    NODE_MAJOR="${NODE_MAJOR#v}"
-    if [ "$NODE_MAJOR" -lt 22 ] 2>/dev/null; then
-        echo -e "${YELLOW}[WARN]${NC} Node.js >= 22 required. Will be upgraded during install."
+if command -v python &>/dev/null; then
+    PY_VER=$(python --version 2>/dev/null | awk '{print $2}')
+    echo -e "${GREEN}[OK]${NC}   Python found: $PY_VER"
+    if ! python -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+        echo -e "${YELLOW}[WARN]${NC} Python >= 3.11 required. Will be upgraded during install."
     fi
 else
-    echo -e "${YELLOW}[INFO]${NC} Node.js not found. Will be installed via glibc environment."
+    echo -e "${YELLOW}[INFO]${NC} Python not found. Will be installed via 'pkg install python'."
 fi
 
 SDK_INT=$(getprop ro.build.version.sdk 2>/dev/null || echo "0")
 if [ "$SDK_INT" -ge 31 ] 2>/dev/null; then
     echo -e "${YELLOW}[INFO]${NC} Android 12+ detected — if background processes get killed (signal 9),"
-    echo "       see: https://github.com/AidanPark/openclaw-android/blob/main/docs/disable-phantom-process-killer.md"
+    echo "       see: docs/disable-phantom-process-killer.md"
 fi
 
 echo ""

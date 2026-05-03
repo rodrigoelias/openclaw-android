@@ -1,4 +1,4 @@
-# CodeRabbit configuration for OpenClaw on Android
+# CodeRabbit configuration for Hermes on Android
 # Documentation: https://docs.coderabbit.ai/reference/configuration
 
 language: en-US
@@ -40,11 +40,10 @@ path_filters:
 
 # Review instructions specific to this project
 review_instructions:
-  - "Focus on Kotlin best practices and idiomatic Android code"
-  - "Check for Android memory leaks (Activity/Context references, unregistered receivers)"
-  - "Verify proper lifecycle handling (Activity, Service, coroutine scope cancellation)"
-  - "Ensure shell scripts are POSIX-compatible and follow scripts/lib.sh conventions"
-  - "Check path handling — Termux paths ($PREFIX) vs standard Linux paths"
-  - "Review glibc-runner compatibility (bionic vs glibc boundary issues)"
-  - "Verify WebView ↔ Kotlin JsBridge interface consistency"
+  - "Ensure shell scripts are bash-compatible and follow scripts/lib.sh conventions"
+  - "Check Termux compatibility — paths under $PREFIX, no /etc/, no systemd"
+  - "Verify install.sh / update.sh / uninstall.sh remain idempotent"
+  - "Watch for breaking the platforms/<name>/ abstraction — orchestrators must stay platform-agnostic"
+  - "Check that hermes-agent upstream changes (setup-hermes.sh, constraints-termux.txt) are still respected"
+  - "When touching Kotlin code in android/, follow Android best practices and lifecycle handling"
   - "Ensure no hardcoded paths that break on different Android versions"

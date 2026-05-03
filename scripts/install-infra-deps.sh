@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # install-infra-deps.sh - Install core infrastructure packages (L1)
-# Extracted from install-deps.sh — infrastructure only.
 # Always runs regardless of platform selection.
 #
-# Installs: git (+ pkg update/upgrade)
+# Installs: curl, git, openssh (+ pkg update/upgrade)
 set -euo pipefail
 
 GREEN='\033[0;32m'
@@ -19,8 +18,8 @@ pkg update -y
 pkg upgrade -y
 
 # Install core infrastructure packages
-echo "Installing git..."
-pkg install -y git
+echo "Installing core packages: curl git openssh..."
+pkg install -y curl git openssh
 
 echo ""
 echo -e "${GREEN}Infrastructure dependencies installed.${NC}"

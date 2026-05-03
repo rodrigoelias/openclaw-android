@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# bootstrap.sh - Download and run OpenClaw on Android installer
-# Usage: curl -sL https://raw.githubusercontent.com/AidanPark/openclaw-android/main/bootstrap.sh | bash
+# bootstrap.sh - Download and run Hermes on Android installer
+# Usage: curl -sL https://raw.githubusercontent.com/rodrigoelias/hermes-android/main/bootstrap.sh | bash
 set -euo pipefail
 
-REPO_TARBALL="https://github.com/AidanPark/openclaw-android/archive/refs/heads/main.tar.gz"
-INSTALL_DIR="$HOME/.openclaw-android/installer"
+REPO_TARBALL="https://github.com/rodrigoelias/hermes-android/archive/refs/heads/main.tar.gz"
+INSTALL_DIR="$HOME/.hermes-android/installer"
 
 RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
 echo ""
-echo -e "${BOLD}OpenClaw on Android - Bootstrap${NC}"
+echo -e "${BOLD}Hermes on Android - Bootstrap${NC}"
 echo ""
 
 if ! command -v curl &>/dev/null; then
@@ -25,6 +25,6 @@ curl -sfL "$REPO_TARBALL" | tar xz -C "$INSTALL_DIR" --strip-components=1
 
 bash "$INSTALL_DIR/install.sh"
 
-cp "$INSTALL_DIR/uninstall.sh" "$HOME/.openclaw-android/uninstall.sh"
-chmod +x "$HOME/.openclaw-android/uninstall.sh"
+cp "$INSTALL_DIR/uninstall.sh" "$HOME/.hermes-android/uninstall.sh"
+chmod +x "$HOME/.hermes-android/uninstall.sh"
 rm -rf "$INSTALL_DIR"

@@ -1,5 +1,5 @@
-# ShellCheck configuration for OpenClaw on Android
-# Termux 환경에서 실행되는 Shell Script를 위한 설정
+# ShellCheck configuration for Hermes on Android
+# Settings for shell scripts executed in the Termux environment.
 
 # Default shell dialect
 shell=bash

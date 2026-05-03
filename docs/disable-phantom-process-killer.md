@@ -1,6 +1,6 @@
 # Keeping Processes Alive on Android
 
-OpenClaw runs as a server, so Android's power management and process killing can interfere with stable operation. This guide covers all the settings needed to keep your processes running reliably.
+The hermes gateway and `sshd` are long-running background processes, so Android's power management and process killing can interfere with stable operation. This guide covers all the settings needed to keep your processes running reliably.
 
 ## Enable Developer Options
 
@@ -38,7 +38,7 @@ Keeping a phone plugged in 24/7 at 100% can cause battery swelling. Limiting the
 
 ## Disable Phantom Process Killer (Android 12+)
 
-Android 12 and above includes a feature called **Phantom Process Killer** that automatically terminates background processes. This can cause Termux processes like `openclaw gateway`, `sshd`, and `ttyd` to be killed without warning.
+Android 12 and above includes a feature called **Phantom Process Killer** that automatically terminates background processes. This can cause Termux processes like `hermes gateway`, `sshd`, and `ttyd` to be killed without warning.
 
 ## Symptoms
 
@@ -48,22 +48,19 @@ If you see this message in Termux, Android has forcibly killed the process:
 [Process completed (signal 9) - press Enter]
 ```
 
-<img src="images/signal9/01-signal9-killed.png" width="300" alt="Process completed signal 9">
 
 Signal 9 (SIGKILL) cannot be caught or blocked by any process — Android terminated it at the OS level.
 
 ## Requirements
 
 - **Android 12 or higher** (Android 11 and below are not affected)
-- **Termux** with `android-tools` installed (included in OpenClaw on Android)
+- **Termux** with `android-tools` installed (offered as an optional install by `ha --install`)
 
 ## Step 1: Acquire Wake Lock
 
 Pull down the notification bar and find the Termux notification. Tap **Acquire wakelock** to prevent Android from suspending Termux.
 
 <p>
-  <img src="images/signal9/02-termux-acquire-wakelock.png" width="300" alt="Tap Acquire wakelock">
-  <img src="images/signal9/03-termux-wakelock-held.png" width="300" alt="Wake lock held">
 </p>
 
 Once activated, the notification will show **"wake lock held"** and the button changes to **Release wakelock**.
@@ -76,7 +73,6 @@ Once activated, the notification will show **"wake lock held"** and the button c
 2. Find and enable **Wireless debugging**
 3. A confirmation dialog will appear — check **"Always allow on this network"** and tap **Allow**
 
-<img src="images/signal9/04-wireless-debugging-allow.png" width="300" alt="Allow wireless debugging">
 
 ## Step 3: Install ADB (if not already installed)
 
@@ -86,14 +82,13 @@ In Termux, install `android-tools`:
 pkg install -y android-tools
 ```
 
-> If you installed OpenClaw on Android, `android-tools` is already included.
+> If you ticked "Install android-tools" during `bootstrap.sh`, this is already done.
 
 ## Step 4: Pair with ADB
 
 1. In **Wireless debugging** settings, tap **Pair device with pairing code**
 2. A dialog will show the **Wi-Fi pairing code** and **IP address & Port**
 
-   <img src="images/signal9/05-pairing-code-dialog.png" width="300" alt="Pairing code dialog">
 
 3. In Termux, run the pairing command using the port and code shown on screen:
 
@@ -107,7 +102,6 @@ Example:
 adb pair localhost:39555 269556
 ```
 
-<img src="images/signal9/06-adb-pair-success.png" width="600" alt="adb pair success">
 
 You should see `Successfully paired`.
 
@@ -115,7 +109,6 @@ You should see `Successfully paired`.
 
 After pairing, go back to the **Wireless debugging** main screen. Note the **IP address & Port** shown at the top — this is different from the pairing port.
 
-<img src="images/signal9/07-wireless-debugging-paired.png" width="300" alt="Wireless debugging paired">
 
 In Termux, connect using the port shown on the main screen:
 
@@ -149,7 +142,6 @@ adb shell "settings get global settings_enable_monitor_phantom_procs"
 
 If the output is `false`, Phantom Process Killer has been successfully disabled.
 
-<img src="images/signal9/08-adb-disable-ppk-done.png" width="600" alt="Phantom Process Killer disabled">
 
 ## Notes
 

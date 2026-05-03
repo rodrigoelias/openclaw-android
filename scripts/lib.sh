@@ -11,28 +11,30 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── Project constants ──
-PROJECT_DIR="$HOME/.openclaw-android"
+PROJECT_DIR="$HOME/.hermes-android"
 BIN_DIR="$PROJECT_DIR/bin"
 PLATFORM_MARKER="$PROJECT_DIR/.platform"
-REPO_BASE_ORIGIN="https://raw.githubusercontent.com/AidanPark/openclaw-android/main"
+HERMES_REPO_URL="https://github.com/rodrigoelias/hermes-agent.git"
+HERMES_REPO_DIR="$PROJECT_DIR/hermes-agent"
+REPO_BASE_ORIGIN="https://raw.githubusercontent.com/rodrigoelias/hermes-android/main"
 REPO_BASE_MIRRORS=(
-    "https://ghfast.top/https://raw.githubusercontent.com/AidanPark/openclaw-android/main"
-    "https://ghproxy.net/https://raw.githubusercontent.com/AidanPark/openclaw-android/main"
-    "https://mirror.ghproxy.com/https://raw.githubusercontent.com/AidanPark/openclaw-android/main"
+    "https://ghfast.top/https://raw.githubusercontent.com/rodrigoelias/hermes-android/main"
+    "https://ghproxy.net/https://raw.githubusercontent.com/rodrigoelias/hermes-android/main"
+    "https://mirror.ghproxy.com/https://raw.githubusercontent.com/rodrigoelias/hermes-android/main"
 )
-NPM_REGISTRY_ORIGIN="https://registry.npmjs.org/"
-NPM_REGISTRY_MIRROR="https://registry.npmmirror.com/"
-NPM_REGISTRY_CACHE="$PROJECT_DIR/.npm-registry"
+PYPI_INDEX_ORIGIN="https://pypi.org/simple/"
+PYPI_INDEX_MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple/"
+PYPI_INDEX_CACHE="$PROJECT_DIR/.pypi-index"
 
 # Detect reachable REPO_BASE (origin first, then mirrors)
 resolve_repo_base() {
-    if curl -sI --connect-timeout 3 "$REPO_BASE_ORIGIN/oa.sh" >/dev/null 2>&1; then
+    if curl -sI --connect-timeout 3 "$REPO_BASE_ORIGIN/ha.sh" >/dev/null 2>&1; then
         REPO_BASE="$REPO_BASE_ORIGIN"
         return 0
     fi
     for mirror in "${REPO_BASE_MIRRORS[@]}"; do
-        if curl -sI --connect-timeout 3 "$mirror/oa.sh" >/dev/null 2>&1; then
-            echo -e "  ${YELLOW}[MIRROR]${NC} Using mirror: ${mirror%%/oa.sh*}"
+        if curl -sI --connect-timeout 3 "$mirror/ha.sh" >/dev/null 2>&1; then
+            echo -e "  ${YELLOW}[MIRROR]${NC} Using mirror: ${mirror%%/ha.sh*}"
             REPO_BASE="$mirror"
             return 0
         fi
@@ -42,62 +44,50 @@ resolve_repo_base() {
     return 1
 }
 
-# Detect reachable npm registry and export NPM_CONFIG_REGISTRY (origin first, then mirror)
-resolve_npm_registry() {
+# Detect reachable PyPI index and export PIP_INDEX_URL (origin first, then mirror)
+resolve_pypi_index() {
     local choice
-    local cache_file="$NPM_REGISTRY_CACHE"
+    local cache_file="$PYPI_INDEX_CACHE"
     local reachable=0
-    if curl -sI --connect-timeout 5 "$NPM_REGISTRY_ORIGIN" >/dev/null 2>&1; then
-        choice="$NPM_REGISTRY_ORIGIN"
+    if curl -sI --connect-timeout 5 "$PYPI_INDEX_ORIGIN" >/dev/null 2>&1; then
+        choice="$PYPI_INDEX_ORIGIN"
         reachable=1
-    elif curl -sI --connect-timeout 5 "$NPM_REGISTRY_MIRROR" >/dev/null 2>&1; then
-        echo -e "  ${YELLOW}[MIRROR]${NC} Using npm mirror: ${NPM_REGISTRY_MIRROR}"
-        choice="$NPM_REGISTRY_MIRROR"
+    elif curl -sI --connect-timeout 5 "$PYPI_INDEX_MIRROR" >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}[MIRROR]${NC} Using PyPI mirror: ${PYPI_INDEX_MIRROR}"
+        choice="$PYPI_INDEX_MIRROR"
         reachable=1
     else
-        choice="$NPM_REGISTRY_ORIGIN"
+        choice="$PYPI_INDEX_ORIGIN"
     fi
     mkdir -p "$(dirname "$cache_file")"
     printf '%s' "$choice" > "$cache_file.tmp" && mv "$cache_file.tmp" "$cache_file"
-    export NPM_CONFIG_REGISTRY="$choice"
+    export PIP_INDEX_URL="$choice"
     if [ "$reachable" -eq 1 ]; then
         return 0
     fi
     return 1
 }
 
-# Fix shebangs in npm globally-installed CLI entry points
-# Rewrites #!/usr/bin/env node → #!$BIN_DIR/node so CLIs work on Android
-fix_npm_global_shebangs() {
-    local _js
-    for _js in "$PREFIX/lib/node_modules"/*/bin/*.js \
-               "$PREFIX/lib/node_modules"/@*/*/bin/*.js; do
-        [ -f "$_js" ] || continue
-        head -1 "$_js" | grep -q '^#!/usr/bin/env node$' || continue
-        sed -i "1s|#!/usr/bin/env node|#!$BIN_DIR/node|" "$_js"
-    done
-}
-
 # Initialize REPO_BASE
 REPO_BASE="$REPO_BASE_ORIGIN"
 
-BASHRC_MARKER_START="# >>> OpenClaw on Android >>>"
-BASHRC_MARKER_END="# <<< OpenClaw on Android <<<"
-OA_VERSION="1.0.27"
+BASHRC_MARKER_START="# >>> Hermes on Android >>>"
+BASHRC_MARKER_END="# <<< Hermes on Android <<<"
+HA_VERSION="0.1.0"
 
 # ── Platform detection ──
-# 1. Explicit marker file (new install and after first update)
-# 2. Legacy detection (v1.0.2 and below, one-time)
+# 1. Explicit marker file
+# 2. Legacy detection via hermes binary
 # 3. Detection failure
 detect_platform() {
     if [ -f "$PLATFORM_MARKER" ]; then
         cat "$PLATFORM_MARKER"
         return 0
     fi
-    if command -v openclaw &>/dev/null; then
-        echo "openclaw"
+    if command -v hermes &>/dev/null; then
+        echo "hermes-agent"
         mkdir -p "$(dirname "$PLATFORM_MARKER")"
-        echo "openclaw" > "$PLATFORM_MARKER"
+        echo "hermes-agent" > "$PLATFORM_MARKER"
         return 0
     fi
     echo ""
