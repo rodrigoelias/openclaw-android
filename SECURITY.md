@@ -4,34 +4,49 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+| 0.1.x   | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
 **Please do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please report them responsibly:
+Instead, report them via [GitHub Security Advisories](https://github.com/rodrigoelias/hermes-android/security/advisories/new).
 
-1. **GitHub**: Use [GitHub Security Advisories](https://github.com/AidanPark/openclaw-android/security/advisories/new)
-
-### What to Include
+### What to include
 
 - Description of the vulnerability
 - Steps to reproduce
 - Impact assessment
 - Suggested fix (if any)
 
-### Response Timeline
+### Response timeline
 
-- **Acknowledgment**: Within 48 hours
-- **Assessment**: Within 1 week
-- **Fix**: Within 2 weeks for critical issues
+- **Acknowledgment**: within 48 hours
+- **Assessment**: within 1 week
+- **Fix**: within 2 weeks for critical issues
 
-## Security Architecture
+## Scope
 
-OpenClaw on Android runs standard Linux binaries on Android without proot-distro. The security model is shaped by this unique execution environment.
+This repository contains:
 
-### Execution Isolation
+- Shell scripts that run in Termux to install and manage hermes-agent on Android
+- A standalone Android APK (`android/`, currently inherited from openclaw-android — see `android/README.md`)
+
+### In scope
+
+- Vulnerabilities in this repo's install / update scripts (e.g. command injection, path traversal during extraction, insecure tarball handling).
+- Vulnerabilities in the `ha` CLI.
+- Insecure defaults in the gateway runit service template.
+- Supply-chain risk in the bootstrap flow (mirror handling, tarball verification).
+
+### Out of scope
+
+- Vulnerabilities in `hermes-agent` itself → report to [hermes-agent](https://github.com/rodrigoelias/hermes-agent/security/advisories/new).
+- Vulnerabilities in Termux → report to [Termux](https://github.com/termux/termux-app).
+- Vulnerabilities in upstream Python packages — report to the affected project (cryptography, pydantic, ...).
+- Device-level security (rooted devices, unlocked bootloaders).
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -39,30 +54,17 @@ OpenClaw on Android runs standard Linux binaries on Android without proot-distro
 │ ┌─────────────────────────────────────────┐ │
 │ │ Termux sandbox (/data/data/com.termux)  │ │
 │ │ ┌─────────────────────────────────────┐ │ │
-│ │ │ glibc-runner (ld.so userspace only) │ │ │
-│ │ │ Node.js → OpenClaw                  │ │ │
+│ │ │ Termux Python 3.11+ (Bionic)        │ │ │
+│ │ │ venv → hermes-agent                 │ │ │
 │ │ └─────────────────────────────────────┘ │ │
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 
-### Isolation Layers
+### Isolation layers
 
-1. **Android app sandbox** — Termux runs in its own Linux user namespace; no access to other app data
-2. **SELinux** — Android's mandatory access control applies to all Termux processes
-3. **No root required** — The entire stack runs as a regular unprivileged user
-4. **No proot** — No filesystem translation layer; glibc-runner provides only the dynamic linker
-5. **Path conversion** — Standard Linux paths (`/tmp`, `/bin/sh`) are mapped to Termux equivalents at install time, not at runtime via syscall interception
-
-### What We Protect Against
-
-- Unauthorized access to Android system or other app data (enforced by Android sandbox)
-- Arbitrary code execution outside Termux (prevented by SELinux + app sandbox)
-- Path traversal from Termux into Android system paths (Termux prefix isolation)
-
-### What Is Out of Scope
-
-- Vulnerabilities in OpenClaw core (report to [OpenClaw upstream](https://github.com/openclaw/openclaw))
-- Vulnerabilities in Termux (report to [Termux](https://github.com/termux/termux-app))
-- Vulnerabilities in glibc-runner (report to [termux-pacman](https://github.com/AidanPark/openclaw-android))
-- Device-level security (rooted devices, unlocked bootloaders)
+1. **Android app sandbox** — Termux runs in its own UID; no access to other app data.
+2. **SELinux** — Android's mandatory access control applies to all Termux processes.
+3. **Unprivileged user** — The entire stack runs as a regular user. No root, no SELinux exemptions.
+4. **No proot** — No filesystem translation layer; Python uses Termux paths natively.
+5. **venv isolation** — hermes-agent's deps live in `~/.hermes-android/hermes-agent/venv`, not the system Python.

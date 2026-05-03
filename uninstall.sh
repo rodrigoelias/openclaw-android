@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="$HOME/.openclaw-android"
+PROJECT_DIR="$HOME/.hermes-android"
 
-if [ -f "$HOME/.openclaw-android/scripts/lib.sh" ]; then
+if [ -f "$HOME/.hermes-android/scripts/lib.sh" ]; then
     # shellcheck source=/dev/null
-    source "$HOME/.openclaw-android/scripts/lib.sh"
+    source "$HOME/.hermes-android/scripts/lib.sh"
 else
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
     BOLD='\033[1m'
     NC='\033[0m'
     PLATFORM_MARKER="$PROJECT_DIR/.platform"
-    BASHRC_MARKER_START="# >>> OpenClaw on Android >>>"
-    BASHRC_MARKER_END="# <<< OpenClaw on Android <<<"
+    BASHRC_MARKER_START="# >>> Hermes on Android >>>"
+    BASHRC_MARKER_END="# <<< Hermes on Android <<<"
 
     ask_yn() {
         local prompt="$1"
@@ -34,7 +34,7 @@ fi
 
 echo ""
 echo -e "${BOLD}========================================${NC}"
-echo -e "${BOLD}  OpenClaw on Android - Uninstaller${NC}"
+echo -e "${BOLD}  Hermes on Android - Uninstaller${NC}"
 echo -e "${BOLD}========================================${NC}"
 echo ""
 
@@ -47,79 +47,39 @@ fi
 
 step() {
     echo ""
-    echo -e "${BOLD}[$1/7] $2${NC}"
+    echo -e "${BOLD}[$1/4] $2${NC}"
     echo "----------------------------------------"
 }
 
 step 1 "Platform uninstall"
 PLATFORM=$(detect_platform 2>/dev/null || true)
 if [ -z "$PLATFORM" ]; then
-    echo -e "${YELLOW}[SKIP]${NC} Platform not detected"
+    PLATFORM="hermes-agent"
+fi
+
+PLATFORM_UNINSTALL="$PROJECT_DIR/platforms/$PLATFORM/uninstall.sh"
+if [ -f "$PLATFORM_UNINSTALL" ]; then
+    bash "$PLATFORM_UNINSTALL"
 else
-    PLATFORM_UNINSTALL="$PROJECT_DIR/platforms/$PLATFORM/uninstall.sh"
-    if [ -f "$PLATFORM_UNINSTALL" ]; then
-        bash "$PLATFORM_UNINSTALL"
-    else
-        echo -e "${YELLOW}[SKIP]${NC} Platform uninstall script not found: $PLATFORM_UNINSTALL"
-    fi
+    echo -e "${YELLOW}[SKIP]${NC} Platform uninstall script not found: $PLATFORM_UNINSTALL"
 fi
 
-step 2 "code-server"
-if pgrep -f "code-server" &>/dev/null; then
-    pkill -f "code-server" || true
-    echo -e "${GREEN}[OK]${NC}   Stopped running code-server"
-fi
-
-if ls "$HOME/.local/lib"/code-server-* &>/dev/null 2>&1; then
-    rm -rf "$HOME/.local/lib"/code-server-*
-    echo -e "${GREEN}[OK]${NC}   Removed code-server from ~/.local/lib"
+step 2 "ha and haupdate commands"
+if [ -f "${PREFIX:-}/bin/ha" ]; then
+    rm -f "${PREFIX:-}/bin/ha"
+    echo -e "${GREEN}[OK]${NC}   Removed ${PREFIX:-}/bin/ha"
 else
-    echo -e "${YELLOW}[SKIP]${NC} code-server not found in ~/.local/lib"
+    echo -e "${YELLOW}[SKIP]${NC} ${PREFIX:-}/bin/ha not found"
 fi
 
-if [ -f "$HOME/.local/bin/code-server" ] || [ -L "$HOME/.local/bin/code-server" ]; then
-    rm -f "$HOME/.local/bin/code-server"
-    echo -e "${GREEN}[OK]${NC}   Removed ~/.local/bin/code-server"
+if [ -f "${PREFIX:-}/bin/haupdate" ]; then
+    rm -f "${PREFIX:-}/bin/haupdate"
+    echo -e "${GREEN}[OK]${NC}   Removed ${PREFIX:-}/bin/haupdate"
 else
-    echo -e "${YELLOW}[SKIP]${NC} ~/.local/bin/code-server not found"
+    echo -e "${YELLOW}[SKIP]${NC} ${PREFIX:-}/bin/haupdate not found"
 fi
 
-rmdir "$HOME/.local/bin" 2>/dev/null || true
-rmdir "$HOME/.local/lib" 2>/dev/null || true
-rmdir "$HOME/.local" 2>/dev/null || true
-
-step 3 "Chromium"
-if command -v chromium-browser &>/dev/null || command -v chromium &>/dev/null; then
-    pkg uninstall -y chromium 2>/dev/null || true
-    echo -e "${GREEN}[OK]${NC}   Removed Chromium"
-else
-    echo -e "${YELLOW}[SKIP]${NC} Chromium not installed"
-fi
-
-step 4 "oa and oaupdate commands"
-if [ -f "${PREFIX:-}/bin/oa" ]; then
-    rm -f "${PREFIX:-}/bin/oa"
-    echo -e "${GREEN}[OK]${NC}   Removed ${PREFIX:-}/bin/oa"
-else
-    echo -e "${YELLOW}[SKIP]${NC} ${PREFIX:-}/bin/oa not found"
-fi
-
-if [ -f "${PREFIX:-}/bin/oaupdate" ]; then
-    rm -f "${PREFIX:-}/bin/oaupdate"
-    echo -e "${GREEN}[OK]${NC}   Removed ${PREFIX:-}/bin/oaupdate"
-else
-    echo -e "${YELLOW}[SKIP]${NC} ${PREFIX:-}/bin/oaupdate not found"
-fi
-
-step 5 "glibc components"
-if command -v pacman &>/dev/null && pacman -Q glibc-runner &>/dev/null; then
-    pacman -R glibc-runner --noconfirm || true
-    echo -e "${GREEN}[OK]${NC}   Removed glibc-runner package"
-else
-    echo -e "${YELLOW}[SKIP]${NC} glibc-runner not installed"
-fi
-
-step 6 "shell configuration"
+step 3 "shell configuration"
 BASHRC="$HOME/.bashrc"
 if [ -f "$BASHRC" ] && grep -qF "$BASHRC_MARKER_START" "$BASHRC"; then
     sed -i "/${BASHRC_MARKER_START//\//\\/}/,/${BASHRC_MARKER_END//\//\\/}/d" "$BASHRC"
@@ -129,10 +89,10 @@ else
     echo -e "${YELLOW}[SKIP]${NC} No environment block found in $BASHRC"
 fi
 
-step 7 "installation directory"
+step 4 "installation directory"
 
 if [ -d "$PROJECT_DIR" ]; then
-    if ask_yn "Remove installation directory (~/.openclaw-android)? Includes Node.js, patches, configs."; then
+    if ask_yn "Remove installation directory (~/.hermes-android)? Includes hermes-agent repo, venv, configs."; then
         rm -rf "$PROJECT_DIR"
         echo -e "${GREEN}[OK]${NC}   Removed $PROJECT_DIR"
     else

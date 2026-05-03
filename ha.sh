@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="$HOME/.openclaw-android"
+PROJECT_DIR="$HOME/.hermes-android"
 
-if [ -f "$HOME/.openclaw-android/scripts/lib.sh" ]; then
+if [ -f "$HOME/.hermes-android/scripts/lib.sh" ]; then
     # shellcheck source=/dev/null
-    source "$HOME/.openclaw-android/scripts/lib.sh"
+    source "$HOME/.hermes-android/scripts/lib.sh"
     # shellcheck source=/dev/null
-    if [ -f "$HOME/.openclaw-android/scripts/backup.sh" ]; then
-        source "$HOME/.openclaw-android/scripts/backup.sh"
+    if [ -f "$HOME/.hermes-android/scripts/backup.sh" ]; then
+        source "$HOME/.hermes-android/scripts/backup.sh"
     fi
 else
-    OA_VERSION="1.0.27"
+    HA_VERSION="0.1.0"
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
     BOLD='\033[1m'
     NC='\033[0m'
-    REPO_BASE_ORIGIN="https://raw.githubusercontent.com/AidanPark/openclaw-android/main"
+    REPO_BASE_ORIGIN="https://raw.githubusercontent.com/rodrigoelias/hermes-android/main"
     REPO_BASE="$REPO_BASE_ORIGIN"
     PLATFORM_MARKER="$PROJECT_DIR/.platform"
 
@@ -30,7 +30,7 @@ else
     }
 
     resolve_repo_base() {
-        if curl -sI --connect-timeout 3 "$REPO_BASE_ORIGIN/oa.sh" >/dev/null 2>&1; then
+        if curl -sI --connect-timeout 3 "$REPO_BASE_ORIGIN/ha.sh" >/dev/null 2>&1; then
             REPO_BASE="$REPO_BASE_ORIGIN"; return 0
         fi
         local mirrors=(
@@ -39,7 +39,7 @@ else
             "https://mirror.ghproxy.com/$REPO_BASE_ORIGIN"
         )
         for m in "${mirrors[@]}"; do
-            if curl -sI --connect-timeout 3 "$m/oa.sh" >/dev/null 2>&1; then
+            if curl -sI --connect-timeout 3 "$m/ha.sh" >/dev/null 2>&1; then
                 echo -e "  ${YELLOW}[MIRROR]${NC} Using mirror for GitHub downloads"
                 REPO_BASE="$m"; return 0
             fi
@@ -50,15 +50,15 @@ fi
 
 show_help() {
     echo ""
-    echo -e "${BOLD}oa${NC} — OpenClaw on Android CLI v${OA_VERSION}"
+    echo -e "${BOLD}ha${NC} — Hermes on Android CLI v${HA_VERSION}"
     echo ""
-    echo "Usage: oa [option]"
+    echo "Usage: ha [option]"
     echo ""
     echo "Options:"
-    echo "  --update       Update OpenClaw and Android patches"
-    echo "  --install      Install optional tools (tmux, code-server, AI CLIs, etc.)"
-    echo "  --uninstall    Remove OpenClaw on Android"
-    echo "  --backup       Create a full backup of OpenClaw data"
+    echo "  --update       Update hermes-agent and Android scripts"
+    echo "  --install      Install optional tools (tmux, ttyd, runit gateway service, etc.)"
+    echo "  --uninstall    Remove Hermes on Android"
+    echo "  --backup       Create a full backup of ~/.hermes data"
     echo "  --restore      Restore from a backup"
     echo "  --status       Show installation status and all components"
     echo "  --version, -v  Show version"
@@ -67,17 +67,17 @@ show_help() {
 }
 
 show_version() {
-    echo "oa v${OA_VERSION} (OpenClaw on Android)"
+    echo "ha v${HA_VERSION} (Hermes on Android)"
 
     local latest
     latest=$(curl -sfL --max-time 3 "$REPO_BASE/scripts/lib.sh" 2>/dev/null \
-        | grep -m1 '^OA_VERSION=' | cut -d'"' -f2) || true
+        | grep -m1 '^HA_VERSION=' | cut -d'"' -f2) || true
 
     if [ -n "${latest:-}" ]; then
-        if [ "$latest" = "$OA_VERSION" ]; then
+        if [ "$latest" = "$HA_VERSION" ]; then
             echo -e "  ${GREEN}Up to date${NC}"
         else
-            echo -e "  ${YELLOW}v${latest} available${NC} - run: oa --update"
+            echo -e "  ${YELLOW}v${latest} available${NC} - run: ha --update"
         fi
     fi
 }
@@ -126,12 +126,12 @@ cmd_uninstall() {
 cmd_status() {
     echo ""
     echo -e "${BOLD}========================================${NC}"
-    echo -e "${BOLD}  OpenClaw on Android — Status${NC}"
+    echo -e "${BOLD}  Hermes on Android — Status${NC}"
     echo -e "${BOLD}========================================${NC}"
 
     echo ""
     echo -e "${BOLD}Version${NC}"
-    echo "  oa:          v${OA_VERSION}"
+    echo "  ha:          v${HA_VERSION}"
 
     local PLATFORM
     PLATFORM=$(detect_platform 2>/dev/null) || PLATFORM=""
@@ -145,6 +145,7 @@ cmd_status() {
     echo -e "${BOLD}Environment${NC}"
     echo "  PREFIX:            ${PREFIX:-not set}"
     echo "  TMPDIR:            ${TMPDIR:-not set}"
+    echo "  HERMES_HOME:       ${HERMES_HOME:-not set}"
 
     echo ""
     echo -e "${BOLD}Paths${NC}"
@@ -159,7 +160,7 @@ cmd_status() {
 
     echo ""
     echo -e "${BOLD}Configuration${NC}"
-    if grep -qF "OpenClaw on Android" "$HOME/.bashrc" 2>/dev/null; then
+    if grep -qF "Hermes on Android" "$HOME/.bashrc" 2>/dev/null; then
         echo -e "  ${GREEN}[OK]${NC}   .bashrc environment block present"
     else
         echo -e "  ${RED}[MISS]${NC} .bashrc environment block not found"
@@ -197,7 +198,7 @@ cmd_install() {
 case "${1:-}" in
     --update|--install)
         resolve_repo_base || true
-        command -v resolve_npm_registry >/dev/null 2>&1 && resolve_npm_registry || true
+        command -v resolve_pypi_index >/dev/null 2>&1 && resolve_pypi_index || true
         ;;
     --version|-v|--uninstall)
         resolve_repo_base || true
@@ -205,20 +206,14 @@ case "${1:-}" in
 esac
 
 case "${1:-}" in
-    --update)
-        cmd_update
-        ;;
-    --install)
-        cmd_install
-        ;;
-    --uninstall)
-        cmd_uninstall
-        ;;
+    --update)    cmd_update ;;
+    --install)   cmd_install ;;
+    --uninstall) cmd_uninstall ;;
     --backup)
         if declare -f cmd_backup > /dev/null 2>&1; then
             cmd_backup "${2:-}"
         else
-            echo -e "${RED}[FAIL]${NC} backup.sh not found. Run: oa --update"
+            echo -e "${RED}[FAIL]${NC} backup.sh not found. Run: ha --update"
             exit 1
         fi
         ;;
@@ -226,19 +221,13 @@ case "${1:-}" in
         if declare -f cmd_restore > /dev/null 2>&1; then
             cmd_restore
         else
-            echo -e "${RED}[FAIL]${NC} backup.sh not found. Run: oa --update"
+            echo -e "${RED}[FAIL]${NC} backup.sh not found. Run: ha --update"
             exit 1
         fi
         ;;
-    --status)
-        cmd_status
-        ;;
-    --version|-v)
-        show_version
-        ;;
-    --help|-h|"")
-        show_help
-        ;;
+    --status)        cmd_status ;;
+    --version|-v)    show_version ;;
+    --help|-h|"")    show_help ;;
     *)
         echo -e "${RED}Unknown option: $1${NC}"
         echo ""

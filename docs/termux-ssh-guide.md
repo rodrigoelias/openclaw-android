@@ -41,8 +41,6 @@ sshd
 
 If the prompt (`$`) returns with no error message, it's working.
 
-<img src="images/termux_tab_2.png" width="300" alt="sshd running in Termux">
-
 ## Step 4: Find the Phone's IP Address
 
 ```bash

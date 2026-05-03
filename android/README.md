@@ -1,28 +1,50 @@
-# OpenClaw Android App
+# Android APK (inherited — not yet adapted for Hermes)
 
-Standalone APK for running OpenClaw on Android. Thin APK (~5MB) with WebView UI, native PTY terminal, Termux bootstrap runtime, and OTA updates.
+This `android/` directory is the standalone APK app inherited from
+[openclaw-android](https://github.com/AidanPark/openclaw-android). It is a thin
+WebView-based Android wrapper that bundles a terminal emulator and a setup UI,
+designed to install and run **OpenClaw** without requiring the user to install
+Termux manually.
 
-## Architecture
+> **Status: not functional for hermes-agent.**
+>
+> The Kotlin source still references the `com.openclaw.android` package, the
+> WebView UI is wired to the OpenClaw setup flow, and `BootstrapManager.kt`
+> downloads the OpenClaw post-setup script. None of this has been re-targeted to
+> install hermes-agent yet.
+>
+> The supported install path today is the Termux-based one documented in the
+> [top-level README](../README.md) — `bootstrap.sh` + `ha`. The standalone APK
+> is preserved here as scaffolding for a future port. CI for the APK build is
+> currently disabled (see `.github/workflows/android-build.yml`).
+
+## What needs to happen to bring this back online
+
+1. Rename the Kotlin package from `com.openclaw.android` to `com.hermes.android`
+   (Gradle module IDs, manifest, AndroidX namespace).
+2. Replace `app/src/main/assets/post-setup.sh` with the hermes-flavoured one
+   (now lives at `../post-setup.sh` in the repo root and points at the
+   `rodrigoelias/hermes-android` tarball).
+3. Update `BootstrapManager.kt` to download from
+   `https://raw.githubusercontent.com/rodrigoelias/hermes-android/main/...`
+   rather than the openclaw URL.
+4. Strip the OpenClaw setup screens out of `www/src/screens/` and replace them
+   with hermes equivalents (or, simpler initial step: drop them entirely and
+   let the user run `hermes setup` from the bundled terminal).
+5. Re-enable the `android-build.yml` workflow trigger.
+
+## Original architecture (for reference)
 
 ```
 APK (~5MB)
 ├── Native: TerminalView (PTY terminal via libtermux.so)
 ├── WebView: React SPA (setup, dashboard, settings)
-├── JsBridge: WebView ↔ Kotlin communication (31 methods, 7 domains)
+├── JsBridge: WebView ↔ Kotlin communication
 ├── EventBridge: Kotlin → WebView event dispatch
 └── OTA: www.zip download + atomic replace
 ```
 
-## Build
-
-### Prerequisites
-
-- JDK 21
-- Android SDK (API 28+)
-- NDK 28+
-- Node.js 22+ (for WebView UI)
-
-### Build APK
+## Build (currently builds the OpenClaw-targeted APK)
 
 ```bash
 cd android
@@ -30,65 +52,7 @@ cd android
 # Output: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Build WebView UI
-
-```bash
-cd android/www
-npm install
-npm run build        # Output: dist/
-npm run build:zip    # Output: www.zip (for OTA)
-```
-
-## Project Structure
-
-```
-android/
-├── app/src/main/
-│   ├── java/com/openclaw/android/
-│   │   ├── MainActivity.kt           # WebView + TerminalView container
-│   │   ├── OpenClawService.kt        # Foreground Service (START_STICKY)
-│   │   ├── BootstrapManager.kt       # Bootstrap download/extract/configure
-│   │   ├── JsBridge.kt               # 31 @JavascriptInterface methods
-│   │   ├── EventBridge.kt            # Kotlin → WebView CustomEvent
-│   │   ├── CommandRunner.kt          # Shell command execution
-│   │   ├── EnvironmentBuilder.kt     # Termux environment variables
-│   │   ├── UrlResolver.kt            # BuildConfig + config.json URL resolution
-│   │   └── TerminalSessionManager.kt # Multi-session terminal management
-│   ├── assets/www/                    # Bundled fallback UI (vanilla JS)
-│   └── res/                           # Android resources
-├── www/                               # React SPA (production WebView UI)
-│   ├── src/
-│   │   ├── lib/bridge.ts              # JsBridge typed wrapper
-│   │   ├── lib/useNativeEvent.ts      # EventBridge React hook
-│   │   ├── lib/router.tsx             # Hash-based router
-│   │   └── screens/                   # All UI screens
-│   └── dist/                          # Build output
-├── terminal-emulator/                 # PTY emulator (from ReTerminal)
-└── terminal-view/                     # Terminal rendering (from ReTerminal)
-```
-
-## Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| `targetSdk 28` | W^X bypass — allows exec in /data/data/ |
-| `minSdk 24` | apt-android-7 bootstrap requirement |
-| Hash routing | `file://` protocol doesn't support History API |
-| No CSS framework | Minimal bundle size for OTA delivery |
-| System font stack | Android WebView, no custom font loading needed |
-
-## JsBridge API Domains
-
-| Domain | Methods | Description |
-|--------|---------|-------------|
-| Terminal | 7 | show/hide, create/switch/close sessions |
-| Setup | 3 | bootstrap status, start setup |
-| Platform | 6 | install/uninstall/switch platforms |
-| Tools | 5 | install/uninstall CLI tools |
-| Commands | 2 | sync/async shell execution |
-| Updates | 2 | check/apply OTA updates |
-| System | 6 | app info, battery, settings, storage |
-
 ## License
 
-GPL v3
+GPL v3 (inherited from openclaw-android's APK module). The shell scripts at the
+repo root are MIT — see `../LICENSE`.

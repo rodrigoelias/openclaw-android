@@ -1,151 +1,84 @@
-# Contributing to OpenClaw on Android
+# Contributing to Hermes on Android
 
-Thanks for your interest in contributing! This guide will help you get started.
+Thanks for your interest! This repo packages [hermes-agent](https://github.com/rodrigoelias/hermes-agent) as a one-command Termux install. Contributions to the install scripts, docs, and CI are welcome.
 
-## First-Time Contributors
+## Where to send issues
 
-Welcome — contributions of all sizes are valued. If this is your first contribution:
+| Type | Repo |
+|---|---|
+| Bug in the agent itself (LLM behavior, gateway, skills, etc.) | [hermes-agent](https://github.com/rodrigoelias/hermes-agent/issues) |
+| Bug in the Termux install path (`install.sh`, `ha` CLI, ...) | this repo |
+| Bug in the standalone APK | this repo (note: APK is inherited from openclaw-android and not yet adapted) |
 
-1. **Find an issue.** Look for issues labeled [`good first issue`](https://github.com/AidanPark/openclaw-android/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) — these are scoped for newcomers.
+## Development setup
 
-2. **Pick a scope.** Good first contributions include:
-   - Typo and documentation fixes
-   - Shell script improvements
-   - Bug fixes with clear reproduction steps
-
-3. **Follow the fork → PR workflow** described below.
-
-## Development Setup
-
-### Shell Scripts (installer, updater, patches)
+### Shell scripts
 
 ```bash
-# Clone the repo
-git clone https://github.com/AidanPark/openclaw-android.git
-cd openclaw-android
+git clone https://github.com/rodrigoelias/hermes-android.git
+cd hermes-android
 
-# Validate shell scripts
+# Validate syntax
 bash -n install.sh
 bash -n update-core.sh
-bash -n oa.sh
+bash -n ha.sh
+
+# Lint
+shellcheck install.sh update-core.sh ha.sh bootstrap.sh uninstall.sh \
+           install-tools.sh post-setup.sh \
+           scripts/*.sh platforms/hermes-agent/*.sh tests/*.sh
 ```
 
-Shell scripts follow POSIX-compatible style with 4-space indentation. See `scripts/lib.sh` for shared conventions.
+Shell scripts use bash with `set -euo pipefail`, 4-space indentation, and `scripts/lib.sh` for shared functions.
 
-### Android App
+### Testing the install on a real device
 
-```bash
-cd android
+The fastest loop is:
 
-# Build APK
-./gradlew assembleDebug
+1. SSH into a Termux session: `ssh -p 8022 user@phone`
+2. `pkg install git curl`
+3. Clone your fork: `git clone https://github.com/<you>/hermes-android.git ~/.hermes-android/installer`
+4. `bash ~/.hermes-android/installer/install.sh`
+5. Iterate: `git pull && bash install.sh`
 
-# Run lint checks
-./gradlew ktlintCheck
-./gradlew detekt
+A clean uninstall is `~/.hermes-android/uninstall.sh && pkg uninstall python rust clang` (the heavyweight bits) before re-running.
 
-# Format code
-./gradlew ktlintFormat
-```
-
-**Prerequisites**: JDK 21, Android SDK (API 28+), NDK 28+, Node.js 22+ (for WebView UI).
-
-### WebView UI
-
-```bash
-cd android/www
-npm install
-npm run build
-```
-
-### Enable Git Hooks
+### Enabling git hooks
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-This enables the pre-commit hook that automatically runs before every commit:
+The pre-commit hook runs shellcheck on staged `.sh` files and markdownlint on `.md` files.
 
-- **Kotlin**: ktlint (formatting) + detekt (static analysis)
-- **Shell scripts**: shellcheck (requires `shellcheck` installed)
-- **Markdown**: markdownlint (requires `markdownlint-cli2` installed)
-- **WebView**: ESLint on TypeScript/React files in `android/www/`
-- **Sync check**: Verifies `post-setup.sh` root and app assets are identical
+## Commit style
 
-## How to Contribute
-
-### 1. Fork and Clone
-
-```bash
-git clone https://github.com/<your-username>/openclaw-android.git
-cd openclaw-android
-```
-
-### 2. Make Your Changes
-
-All work happens on `main` — we use a single-branch workflow with no prefixes.
-
-### 3. Test Your Changes
-
-- **Shell scripts**: Run `bash -n <script>` to validate syntax
-- **Android app**: Run `./gradlew assembleDebug` to verify build
-- **Kotlin code**: Run `./gradlew ktlintCheck && ./gradlew detekt`
-
-### 4. Commit
-
-Commit messages use English, imperative style, with no prefix:
+Imperative present, no prefix:
 
 ```
-Fix update-core.sh syntax error
-Add multi-session terminal tab bar
-Upgrade Node.js to v22.22.0 for FTS5 support
+Fix install-python.sh missing pip ensurepip fallback
+Add runit service for hermes gateway
+Bump HA_VERSION to 0.1.1
 ```
 
-- Start with a capital letter, no period at the end
-- Keep the subject line under 50 characters
-- Use imperative present tense ("Fix", not "Fixed" or "Fixes")
+- Capital letter, no trailing period, ≤ 50 chars on subject line.
+- Body wrapped at 72 chars when needed.
 
-### 5. Open a Pull Request
+## Pull requests
 
-Open a PR against `main`. Describe:
-- What the change does
+PR against `main`. In the description:
+- What changed
 - Why it's needed
-- How to test it
+- How you tested it (real Termux device strongly preferred)
 
-## Project Structure
+## Things to keep in mind
 
-The project has two main parts:
-
-- **Shell scripts** (root) — Installer, updater, patches, CLI. These run in Termux on Android.
-- **Android app** (`android/`) — Kotlin/Android APK with WebView UI and native terminal.
-
-See the [README](README.md) for the full project structure and architecture details.
-
-## Code Style
-
-| Language | Style | Indentation |
-|----------|-------|-------------|
-| Shell (bash) | POSIX compatible, `scripts/lib.sh` conventions | 4 spaces |
-| Kotlin | [Official coding conventions](https://kotlinlang.org/docs/coding-conventions.html) | 4 spaces |
-| XML | Standard Android conventions | 2 spaces |
-| TypeScript/React | ESLint config in `android/www/` | 2 spaces |
-
-## Key Considerations
-
-When contributing to this project, keep in mind:
-
-- **Termux compatibility** — Scripts must work in Termux's environment (`$PREFIX` paths, no root)
-- **glibc boundary** — Node.js runs under glibc-runner while system tools use Bionic libc
-- **Path handling** — Standard Linux paths (`/tmp`, `/bin/sh`) must be converted to Termux equivalents
-- **Android version range** — The app targets `minSdk 24` (Android 7.0) to `targetSdk 28`
-- **Idempotency** — Install and update scripts should be safe to run multiple times
-
-## Reporting Issues
-
-- **Bugs**: Include Android version, device model, Termux version, steps to reproduce
-- **Features**: Describe the use case and proposed approach
-- **Security**: See [SECURITY.md](SECURITY.md) for responsible disclosure
+- **No glibc / Node.js** — Hermes runs on Termux's native Bionic Python. Don't reintroduce the openclaw glibc-runner pattern.
+- **Idempotent scripts** — `install.sh` and `update.sh` should be safe to re-run.
+- **Long compiles** — `pydantic-core` / `cryptography` take 5–10 min to build on a phone; pre-compute timing assumptions accordingly.
+- **Network resilience** — `scripts/lib.sh` includes mirror fallbacks for both GitHub raw and PyPI; use them where relevant.
+- **Upstream fidelity** — When in doubt, defer to `hermes-agent`'s own `setup-hermes.sh` rather than duplicating logic here.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree your contributions are licensed under the MIT License (see [LICENSE](LICENSE)).
